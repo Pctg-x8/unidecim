@@ -121,7 +121,7 @@ pub extern "C" fn UnityGetAudioEffectDefinitions(defptr: *mut *const std::sync::
             };
             uad.name[..9].copy_from_slice(unsafe { std::mem::transmute("Decimator".as_bytes()) }); uad
         };
-        static ref DEFPTRS: [std::sync::atomic::AtomicPtr<UnityAudioEffectDefinition>; 1] = [std::sync::atomic::AtomicPtr::new(&ADEF as *const _ as *mut _)];
+        static ref DEFPTRS: [std::sync::atomic::AtomicPtr<UnityAudioEffectDefinition>; 1] = [std::sync::atomic::AtomicPtr::new(&*ADEF as *const _ as *mut _)];
     );
     unsafe { *defptr = DEFPTRS.as_ptr(); } 1
 }
