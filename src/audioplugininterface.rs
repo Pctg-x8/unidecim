@@ -1,4 +1,5 @@
 use libc::*;
+use std::mem::{size_of, transmute}; use std::ptr::null_mut;
 
 pub const UNITY_AUDIO_PLUGIN_API_VERSION: usize = 0x010401;
 
@@ -93,46 +94,46 @@ pub type UnityAudioEffect_DistanceAttenuationCallback = extern "C" fn(state: *mu
 }
 
 // This padding was historically due to PS3 SPU DMA requirement. We aren't removing it now because plugins may rely on this struct being at least this size.
-#[repr(c)] pub struct UnityAudioEffectState([c_uchar; 80]);
+#[repr(C)] pub struct UnityAudioEffectState([c_uchar; 80]);
 /// Union accessor impls
 impl UnityAudioEffectState
 {
     /// Size of this struct
-    pub fn structsize(&self) -> u32 { unsafe { std::mem::transmute::<_, &[u32]>(&self.0[..])[0] } }
+    pub fn structsize(&self) -> u32 { unsafe { transmute::<_, &[u32]>(&self.0[..])[0] } }
     /// System sample rate
-    pub fn samplerate(&self) -> u32 { unsafe { std::mem::transmute::<_, &[u32]>(&self.0[..])[1] } }
+    pub fn samplerate(&self) -> u32 { unsafe { transmute::<_, &[u32]>(&self.0[..])[1] } }
     /// Pointer to a sample counter marking the start of the current block being processed
-    pub fn currdsptick(&self) -> u64 { unsafe { std::mem::transmute::<_, &[u64]>(&self.0[..])[1] } }
+    pub fn currdsptick(&self) -> u64 { unsafe { transmute::<_, &[u64]>(&self.0[..])[1] } }
     /// Used for determining when DSPs are bypassed and so sidechain info becomes invalid
-    pub fn prevdsptick(&self) -> u64 { unsafe { std::mem::transmute::<_, &[u64]>(&self.0[..])[2] } }
+    pub fn prevdsptick(&self) -> u64 { unsafe { transmute::<_, &[u64]>(&self.0[..])[2] } }
     /// Side-chain buffers to read from
-    pub fn sidechainbuffer(&self) -> *const c_float { unsafe { std::mem::transmute::<_, &[*const c_float]>(&self.0[std::mem::size_of::<u64>() * 3..])[0] } }
+    pub fn sidechainbuffer(&self) -> *const c_float { unsafe { transmute::<_, &[*const c_float]>(&self.0[size_of::<u64>() * 3..])[0] } }
     /// Internal data for the effect
-    pub fn effectdata(&self) -> *const c_void { unsafe { std::mem::transmute::<_, &[*const c_void]>(&self.0[std::mem::size_of::<u64>() * 3 + std::mem::transmute::<*const c_float>()..])[0] } }
+    pub fn effectdata(&self) -> *const c_void { unsafe { transmute::<_, &[*const c_void]>(&self.0[size_of::<u64>() * 3 + size_of::<*const c_float>()..])[0] } }
     /// Internal data for the effect
-    pub fn effectdata_mut(&mut self) -> *mut c_void { unsafe { std::mem::transmute::<_, &[*mut c_void]>(&self.0[std::mem::size_of::<u64>() * 3 + std::mem::transmute::<*const c_float>()..])[0] } }
+    pub fn effectdata_mut(&mut self) -> *mut c_void { unsafe { transmute::<_, &[*mut c_void]>(&self.0[size_of::<u64>() * 3 +size_of::<*const c_float>()..])[0] } }
     /// Various flags through which information can be queried from the host
-    pub fn flags(&self) -> u32 { unsafe { std::mem::transmute::<_, &[u32]>(&self.0[std::mem::size_of::<u64>() * 3 + std::mem::transmute::<*const c_void>() * 2..])[0] } }
+    pub fn flags(&self) -> u32 { unsafe { transmute::<_, &[u32]>(&self.0[size_of::<u64>() * 3 + size_of::<*const c_void>() * 2..])[0] } }
 
     /// Data for spatializers
     pub fn spatializerdata(&self) -> *const UnityAudioSpatializerData
     {
-        unsafe { std::mem::transmute::<_, &[*const _]>(&self.0[std::mem::size_of::<u64>() * 3 + std::mem::transmute::<*const c_void>() * 3 + std::mem::transmute::<u32>()..])[0] }
+        unsafe { transmute::<_, &[*const _]>(&self.0[size_of::<u64>() * 3 + size_of::<*const c_void>() * 3 + size_of::<u32>()..])[0] }
     }
     /// Number of frames bein processed per process callback. Use this to allocate temporary buffers before processing starts.
     pub fn dspbuffersize(&self) -> u32
     {
-        unsafe { std::mem::transmute::<_, &[u32]>(&self.0[std::mem::size_of::<u64>() * 3 + std::mem::transmute::<*const c_void>() * 4 + std::mem::transmute::<u32>()..])[0] }
+        unsafe { transmute::<_, &[u32]>(&self.0[size_of::<u64>() * 3 + size_of::<*const c_void>() * 4 + size_of::<u32>()..])[0] }
     }
     /// Version of plugin API used by host
     pub fn hostapiversion(&self) -> u32
     {
-        unsafe { std::mem::transmute::<_, &[u32]>(&self.0[std::mem::size_of::<u64>() * 3 + std::mem::transmute::<*const c_void>() * 4 + std::mem::transmute::<u32>() * 2..])[0] }
+        unsafe { transmute::<_, &[u32]>(&self.0[size_of::<u64>() * 3 + size_of::<*const c_void>() * 4 + size_of::<u32>() * 2..])[0] }
     }
     /// Data for ambisonic plugins. Added in Unity 2017.1, with UNITY_AUDIO_PLUGIN_API_VERSION 0x010400
     pub fn ambisonicdata(&self) -> *const UnityAudioAmbisonicData
     {
-        unsafe { std::mem::transmute::<_, &[*const _]>(&self.0[std::mem::size_of::<u64>() * 3 + std::mem::transmute::<*const c_void>() * 4 + std::mem::transmute::<u32>() * 3..])[0] }
+        unsafe { transmute::<_, &[*const _]>(&self.0[size_of::<u64>() * 3 + size_of::<*const c_void>() * 4 + size_of::<u32>() * 3..])[0] }
     }
 
     pub fn effect_data<T>(&self) -> &T
@@ -147,7 +148,7 @@ impl UnityAudioEffectState
     }
     pub fn write_effect_data<T>(&mut self, ptr: *mut T)
     {
-        std::mem::transmute::<_, &mut [*mut c_void]>(&self.0[std::mem::size_of::<u64>() * 3 + std::mem::transmute::<*const c_float>()..])[0] = T as _;
+        unsafe { transmute::<_, &mut [*mut c_void]>(&mut self.0[size_of::<u64>() * 3 + size_of::<*const c_float>()..])[0] = ptr as _; }
     }
 }
 
@@ -202,7 +203,7 @@ impl UnityAudioEffectState
     pub setposition: Option<UnityAudioEffect_SetPositionCallback>,
     /// A pointer to the definitions of the parameters exposed by this plugin. This data pointed to must remain valid for the whole lifetime of the dynamic library
     /// (ideally it's static)
-    pub paramdefs: *mut UnityAudioParameterDefinition
+    pub paramdefs: *const UnityAudioParameterDefinition,
     /// This is called whenever one of the exposed parameters is changed
     pub setfloatparameter: Option<UnityAudioEffect_SetFloatParameterCallback>,
     /// This is called to query parameter values
@@ -210,7 +211,8 @@ impl UnityAudioEffectState
     /// Get N samples of named buffer. Used for displaying analysis data from the runtime.
     pub getfloatbuffer: Option<UnityAudioEffect_GetFloatBufferCallback>
 }
-use std::mem::size_of; use std::ptr::null_mut;
+unsafe impl Sync for UnityAudioParameterDefinition {}
+unsafe impl Sync for UnityAudioEffectDefinition {}
 impl Default for UnityAudioEffectDefinition
 {
     fn default() -> Self
@@ -218,7 +220,7 @@ impl Default for UnityAudioEffectDefinition
         UnityAudioEffectDefinition
         {
             structsize: size_of::<UnityAudioEffectDefinition>() as _, paramstructsize: size_of::<UnityAudioParameterDefinition>() as _,
-            apiversion: UNITY_AUDIO_PLUGIN_API_VERSION, pluginversion: 0x010000,
+            apiversion: UNITY_AUDIO_PLUGIN_API_VERSION as _, pluginversion: 0x010000,
             channels: 2, numparameters: 0, flags: 0, name: [0; 32],
             create: None, release: None, reset: None, process: None, setposition: None, paramdefs: null_mut(),
             setfloatparameter: None, getfloatparameter: None, getfloatbuffer: None
