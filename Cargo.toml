@@ -1,0 +1,12 @@
+[package]
+name = "unidecim"
+version = "0.1.0"
+authors = ["Pctg-x8 <Syn.Tri.Naga@gmail.com>"]
+
+[lib]
+name = "unidecim"
+path = "src/lib.rs"
+crate-type = ["dylib"]
+
+[dependencies]
+libc = "^0.2"
