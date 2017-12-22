@@ -38,7 +38,7 @@ impl DecimatingProcessor
         {
             if this.phase == 0
             {
-                for c in 0 .. channels { this.locking[c] = inbuf[c]; }
+                for c in 0 .. channels { this.locking[c] = inbuf[f * channels + c]; }
                 this.div = this.div_pending;
             }
             for c in 0 .. channels { outbuf[f * channels + c] = this.locking[c]; }
