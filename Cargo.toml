@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Pctg-x8 <Syn.Tri.Naga@gmail.com>"]
 
 [lib]
-name = "unidecim"
+name = "AudioPlugin_Unidecim"
 path = "src/lib.rs"
 crate-type = ["dylib"]
 
