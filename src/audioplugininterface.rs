@@ -135,15 +135,19 @@ impl UnityAudioEffectState
         unsafe { std::mem::transmute::<_, &[*const _]>(&self.0[std::mem::size_of::<u64>() * 3 + std::mem::transmute::<*const c_void>() * 4 + std::mem::transmute::<u32>() * 3..])[0] }
     }
 
-    pub fn effect_data<T>(&self) -> *const T
+    pub fn effect_data<T>(&self) -> &T
     {
         assert!(!self.effectdata().is_null());
-        self.effectdata() as *const T
+        unsafe { &*(self.effectdata() as *const T) }
     }
-    pub fn effect_data_mut<T>(&mut self) -> *mut T
+    pub fn effect_data_mut<T>(&mut self) -> &mut T
     {
         assert!(!self.effectdata().is_null());
-        self.effectdata() as *mut T
+        unsafe { &mut *(self.effectdata_mut() as *mut T) }
+    }
+    pub fn write_effect_data<T>(&mut self, ptr: *mut T)
+    {
+        std::mem::transmute::<_, &mut [*mut c_void]>(&self.0[std::mem::size_of::<u64>() * 3 + std::mem::transmute::<*const c_float>()..])[0] = T as _;
     }
 }
 
@@ -205,4 +209,19 @@ impl UnityAudioEffectState
     pub getfloatparameter: Option<UnityAudioEffect_GetFloatParameterCallback>,
     /// Get N samples of named buffer. Used for displaying analysis data from the runtime.
     pub getfloatbuffer: Option<UnityAudioEffect_GetFloatBufferCallback>
+}
+use std::mem::size_of; use std::ptr::null_mut;
+impl Default for UnityAudioEffectDefinition
+{
+    fn default() -> Self
+    {
+        UnityAudioEffectDefinition
+        {
+            structsize: size_of::<UnityAudioEffectDefinition>() as _, paramstructsize: size_of::<UnityAudioParameterDefinition>() as _,
+            apiversion: UNITY_AUDIO_PLUGIN_API_VERSION, pluginversion: 0x010000,
+            channels: 2, numparameters: 0, flags: 0, name: [0; 32],
+            create: None, release: None, reset: None, process: None, setposition: None, paramdefs: null_mut(),
+            setfloatparameter: None, getfloatparameter: None, getfloatbuffer: None
+        }
+    }
 }
