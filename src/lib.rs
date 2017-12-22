@@ -33,6 +33,7 @@ impl DecimatingProcessor
     pub fn process(state: &mut UnityAudioEffectState, inbuf: &[c_float], outbuf: &mut [c_float], frames: usize, channels: usize) -> CallbackResult
     {
         let this = state.effect_data_mut::<Self>();
+        if this.div == 1.0 && this.div_pending == 1.0 { outbuf.copy_from_slice(inbuf); return CallbackResult::Ok; }
         if this.locking.len() < channels { this.locking.reserve(channels); unsafe { this.locking.set_len(channels); } }
         for f in 0 .. frames
         {
