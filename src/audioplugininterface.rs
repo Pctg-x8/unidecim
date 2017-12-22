@@ -16,7 +16,7 @@ pub type UnityAudioEffect_SetFloatParameterCallback = extern "C" fn(state: *mut 
 pub type UnityAudioEffect_GetFloatParameterCallback = extern "C" fn(state: *mut UnityAudioEffectState, index: c_int, value: *mut c_float, valuestr: *mut c_char) -> UnityAudioDSPResult;
 pub type UnityAudioEffect_GetFloatBufferCallback = extern "C" fn(state: *mut UnityAudioEffectState, name: *const c_char, buffer: *mut c_float, numsamples: c_int) -> UnityAudioDSPResult;
 
-#[repr(C)] pub struct UnityAudioEffectDefinitionFlags
+#[repr(C)] pub enum UnityAudioEffectDefinitionFlags
 {
     /// Does this effect need a side chain buffer and can it be targeted by a Send?
     IsSideChainTarget = 1 << 0,
@@ -27,7 +27,7 @@ pub type UnityAudioEffect_GetFloatBufferCallback = extern "C" fn(state: *mut Uni
     /// Spatializers Only: Does this spatializer apply distance-based attenuation? Added in Unity 2017.1, with UNITY_AUDIO_PLUGIN_API_VERSION 0x010400
     AppliesDistanceAttenuation = 1 << 3
 }
-#[repr(C)] pub struct UnityAudioEffectStateFlags
+#[repr(C)] pub enum UnityAudioEffectStateFlags
 {
     /// Set when engine is in play mode. Also true while paused
     IsPlaying = 1 << 0,
