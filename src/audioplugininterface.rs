@@ -177,7 +177,7 @@ impl UnityAudioEffectState
     /// Size of paramdesc fields
     pub paramstructsize: u32,
     /// Plugin API version
-    pub apiversion: u32
+    pub apiversion: u32,
     /// Version of this plugin
     pub pluginversion: u32,
     /// Number of channels. Effects should set this to 0 and process any number of input/output channels they get in the process callback.
