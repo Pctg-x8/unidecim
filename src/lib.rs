@@ -108,7 +108,7 @@ pub extern "C" fn UnityGetAudioEffectDefinitions(defptr: *mut *const std::sync::
 {
     lazy_static!(
         static ref PARAMS: [UnityAudioParameterDefinition; 1] = [
-            Parameter::new("Division Rate", 1.0 .. 44100.0).description("Division Rate").into()
+            Parameter::new("Division Rate", 1.0 .. 128.0).description("Division Rate").into()
         ];
         static ref ADEF: UnityAudioEffectDefinition = {
             let mut uad = UnityAudioEffectDefinition
