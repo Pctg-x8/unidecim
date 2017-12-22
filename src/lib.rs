@@ -110,13 +110,16 @@ pub extern "C" fn UnityGetAudioEffectDefinitions(defptr: *mut *const std::sync::
         static ref PARAMS: [UnityAudioParameterDefinition; 1] = [
             Parameter::new("Division Rate", 1.0 .. 44100.0).description("Division Rate").into()
         ];
-        static ref ADEF: UnityAudioEffectDefinition = UnityAudioEffectDefinition
-        {
-            create: Some(create_decimating_processor), release: Some(release_decimating_processor),
-            process: Some(process_decimating_processor), setfloatparameter: Some(set_decimating_processor_float_parameter),
-            getfloatparameter: Some(get_decimating_processor_float_parameter),
-            numparameters: PARAMS.len() as _, paramdefs: PARAMS.as_ptr(),
-            .. Default::default()
+        static ref ADEF: UnityAudioEffectDefinition = {
+            let mut uad = UnityAudioEffectDefinition
+            {
+                create: Some(create_decimating_processor), release: Some(release_decimating_processor),
+                process: Some(process_decimating_processor), setfloatparameter: Some(set_decimating_processor_float_parameter),
+                getfloatparameter: Some(get_decimating_processor_float_parameter),
+                numparameters: PARAMS.len() as _, paramdefs: PARAMS.as_ptr(),
+                .. Default::default()
+            };
+            uad.name[..9].copy_from_slice(unsafe { std::mem::transmute("Decimator".as_bytes()) }); uad
         };
         static ref DEFPTRS: [std::sync::atomic::AtomicPtr<UnityAudioEffectDefinition>; 1] = [std::sync::atomic::AtomicPtr::new(&ADEF as *const _ as *mut _)];
     );
