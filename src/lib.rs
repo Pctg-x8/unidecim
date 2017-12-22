@@ -5,10 +5,10 @@ use std::ops::Range;
 use libc::*;
 mod audioplugininterface; use audioplugininterface::*;
 
-pub struct DecimatingProcessor { locking: Vec<f32>, div: u32, div_pending: u32, phase: u32 }
+pub struct DecimatingProcessor { locking: Vec<f32>, div: f32, div_pending: f32, phase: f32, overlap: bool }
 impl DecimatingProcessor
 {
-    pub fn new() -> Self { DecimatingProcessor { locking: Vec::new(), div: 1, div_pending: 1, phase: 0 } }
+    pub fn new() -> Self { DecimatingProcessor { locking: Vec::new(), div: 1.0, div_pending: 1.0, phase: 0.0, overlap: true } }
 }
 impl DecimatingProcessor
 {
@@ -36,14 +36,14 @@ impl DecimatingProcessor
         if this.locking.len() < channels { this.locking.reserve(channels); unsafe { this.locking.set_len(channels); } }
         for f in 0 .. frames
         {
-            if this.phase == 0
+            if this.overlap
             {
                 for c in 0 .. channels { this.locking[c] = inbuf[f * channels + c]; }
-                this.div = this.div_pending;
+                this.div = this.div_pending; this.overlap = false;
             }
             for c in 0 .. channels { outbuf[f * channels + c] = this.locking[c]; }
-            this.phase += 1;
-            if this.phase >= this.div { this.phase = 0; }
+            this.phase += 1.0;
+            if this.phase >= this.div { this.phase -= this.div; this.overlap = true; }
         }
         CallbackResult::Ok
     }
