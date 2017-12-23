@@ -45,13 +45,6 @@ impl PluginLifecycle for DecimatingProcessor
     fn create(state: &mut UnityAudioEffectState) -> CallbackResult
     {
         state.write_effect_data(Box::into_raw(box Self::new()));
-        /*let params = [Parameter("Division Rate", 1 .. 44100).description("Division Rate").into()];
-        let adef = UnityAudioEffectDefinition
-        {
-            structsize: std::mem::size_of::<UnityAudioEffectDefinition>() as _,
-            paramdefs: params.as_ptr(), numparameters: params.len() as _,
-
-        };*/
         CallbackResult::Ok
     }
     fn release(state: &mut UnityAudioEffectState) -> CallbackResult
