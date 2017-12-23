@@ -1,7 +1,7 @@
 The MIT License (MIT)
 
 Original: Copyright (c) 2014, Unity Technologies
-Rust porting: Copyright (c) 2017 S.Percentage
+Rust porting of audioplugininterface.rs: Copyright (c) 2017 S.Percentage
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
