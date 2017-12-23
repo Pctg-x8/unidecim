@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 extern crate libc;
 #[macro_use] extern crate lazy_static;
 
