@@ -1,11 +1,12 @@
 #![allow(non_snake_case)]
+#![feature(box_syntax, const_fn)]
 
 extern crate libc;
 #[macro_use] extern crate lazy_static;
 
-use std::ops::Range;
 use libc::*;
 mod audioplugininterface; use audioplugininterface::*;
+mod audiointerface; use audiointerface::*;
 
 pub struct DecimatingProcessor { locking: Vec<f32>, div: f32, div_pending: f32, phase: f32, overlap: bool }
 impl DecimatingProcessor
@@ -14,9 +15,36 @@ impl DecimatingProcessor
 }
 impl DecimatingProcessor
 {
-    pub fn create(state: &mut UnityAudioEffectState) -> CallbackResult
+    pub fn parameters() -> &'static [UnityAudioParameterDefinition]
     {
-        state.write_effect_data(Box::into_raw(Box::new(Self::new())));
+        lazy_static!(static ref V: [UnityAudioParameterDefinition; 1] = [
+            Parameter::new("Division Rate", 1.0 .. 128.0).description("Latching sample length").into()
+        ];);
+        &*V
+    }
+    fn definition_constr() -> UnityAudioEffectDefinition
+    {
+        let mut uad = UnityAudioEffectDefinition
+        {
+            create: Some(create_cb::<Self>), release: Some(release_cb::<Self>), process: Some(process_cb::<Self>),
+            setfloatparameter: Some(setfloatparameter_cb::<Self>), getfloatparameter: Some(getfloatparameter_cb::<Self>),
+            numparameters: Self::parameters().len() as _, paramdefs: Self::parameters().as_ptr(),
+            .. Default::default()
+        };
+        uad.name[.."Decimator".as_bytes().len()].copy_from_slice(unsafe { std::mem::transmute("Decimator".as_bytes()) });
+        uad
+    }
+    pub fn definition() -> &'static UnityAudioEffectDefinition
+    {
+        lazy_static!(static ref V: UnityAudioEffectDefinition = DecimatingProcessor::definition_constr(););
+        &*V
+    }
+}
+impl PluginLifecycle for DecimatingProcessor
+{
+    fn create(state: &mut UnityAudioEffectState) -> CallbackResult
+    {
+        state.write_effect_data(Box::into_raw(box Self::new()));
         /*let params = [Parameter("Division Rate", 1 .. 44100).description("Division Rate").into()];
         let adef = UnityAudioEffectDefinition
         {
@@ -26,13 +54,16 @@ impl DecimatingProcessor
         };*/
         CallbackResult::Ok
     }
-    pub fn release(state: &mut UnityAudioEffectState) -> CallbackResult
+    fn release(state: &mut UnityAudioEffectState) -> CallbackResult
     {
         unsafe { drop(Box::from_raw(state.effect_data_mut::<Self>() as *mut _)) };
         state.write_effect_data::<Self>(std::ptr::null_mut());
         CallbackResult::Ok
     }
-    pub fn process(state: &mut UnityAudioEffectState, inbuf: &[c_float], outbuf: &mut [c_float], frames: usize, channels: usize) -> CallbackResult
+}
+impl PluginProcess for DecimatingProcessor
+{
+    fn process(state: &mut UnityAudioEffectState, inbuf: &[c_float], outbuf: &mut [c_float], frames: usize, channels: usize) -> CallbackResult
     {
         let this = state.effect_data_mut::<Self>();
         if this.div == 1.0 && this.div_pending == 1.0 { outbuf.copy_from_slice(inbuf); return CallbackResult::Ok; }
@@ -41,7 +72,8 @@ impl DecimatingProcessor
         {
             if this.overlap
             {
-                for c in 0 .. channels { this.locking[c] = inbuf[f * channels + c]; }
+                this.locking.copy_from_slice(&inbuf[f * channels .. (f + 1) * channels]);
+                //for c in 0 .. channels { this.locking[c] = inbuf[f * channels + c]; }
                 this.div = this.div_pending; this.overlap = false;
             }
             for c in 0 .. channels { outbuf[f * channels + c] = this.locking[c]; }
@@ -50,81 +82,30 @@ impl DecimatingProcessor
         }
         CallbackResult::Ok
     }
-    pub fn set_float_parameter(state: &mut UnityAudioEffectState, index: c_int, value: c_float) -> CallbackResult
+}
+impl PluginParameterHandlers for DecimatingProcessor
+{
+    fn set_float_parameter(state: &mut UnityAudioEffectState, index: usize, value: c_float) -> CallbackResult
     {
         let this = state.effect_data_mut::<Self>();
         if index == 0 { this.div_pending = value as _; CallbackResult::Ok }
         else { CallbackResult::Unsupported }
     }
-    pub fn get_float_parameter(state: &mut UnityAudioEffectState, index: c_int, value: &mut c_float) -> CallbackResult
+    fn get_float_parameter(state: &mut UnityAudioEffectState, index: usize, value: &mut c_float, value_str: *mut c_char) -> CallbackResult
     {
+        unsafe { if let Some(c) = value_str.as_mut() { *c = 0 as _; } }
         let this = state.effect_data_mut::<Self>();
         if index == 0 { *value = this.div_pending as _; CallbackResult::Ok }
         else { CallbackResult::Unsupported }
     }
-}
-pub struct Parameter(UnityAudioParameterDefinition);
-impl Parameter
-{
-    pub fn new(name: &'static str, range: Range<c_float>) -> Self
-    {
-        let mut def = UnityAudioParameterDefinition
-        {
-            min: range.start, max: range.end, defaultval: range.start,
-            displayscale: 1.0, displayexponent: 1.0, .. unsafe { std::mem::zeroed() }
-        };
-        def.name[..name.as_bytes().len()].copy_from_slice(unsafe { std::mem::transmute(name.as_bytes()) });
-        Parameter(def)
-    }
-    pub fn description(mut self, desc: &'static str) -> Self
-    {
-        self.0.description = desc.as_ptr() as *const _; self
-    }
-}
-impl Into<UnityAudioParameterDefinition> for Parameter { fn into(self) -> UnityAudioParameterDefinition { self.0 } }
-
-#[repr(C)] pub enum CallbackResult { Ok = UNITY_AUDIODSP_OK as _, Unsupported = UNITY_AUDIODSP_ERR_UNSUPPORTED as _ }
-
-extern "C" fn create_decimating_processor(state: *mut UnityAudioEffectState) -> UnityAudioDSPResult { DecimatingProcessor::create(unsafe { &mut *state }) as _ }
-extern "C" fn release_decimating_processor(state: *mut UnityAudioEffectState) -> UnityAudioDSPResult { DecimatingProcessor::release(unsafe { &mut *state }) as _ }
-extern "C" fn process_decimating_processor(state: *mut UnityAudioEffectState, inbuf: *mut c_float, outbuf: *mut c_float, length: c_uint, inchannels: c_int, outchannels: c_int) -> UnityAudioDSPResult
-{
-    if inchannels != outchannels { return CallbackResult::Unsupported as _; }
-    if inchannels < 0 { return CallbackResult::Unsupported as _; }
-    let inbuf = unsafe { std::slice::from_raw_parts(inbuf, (length * inchannels as u32) as usize) };
-    let outbuf = unsafe { std::slice::from_raw_parts_mut(outbuf, (length * outchannels as u32) as usize) };
-    DecimatingProcessor::process(unsafe { &mut *state }, inbuf, outbuf, length as _, inchannels as _) as _
-}
-extern "C" fn set_decimating_processor_float_parameter(state: *mut UnityAudioEffectState, index: c_int, value: c_float) -> UnityAudioDSPResult
-{
-    DecimatingProcessor::set_float_parameter(unsafe { &mut *state }, index, value) as _
-}
-extern "C" fn get_decimating_processor_float_parameter(state: *mut UnityAudioEffectState, index: c_int, value: *mut c_float, valuestr: *mut c_char) -> UnityAudioDSPResult
-{
-    let r = DecimatingProcessor::get_float_parameter(unsafe { &mut *state }, index, unsafe { &mut *value }) as _;
-    if !valuestr.is_null() { unsafe { *valuestr = 0; } } r
 }
 
 // entry point, returns number of effects
 #[no_mangle]
 pub extern "C" fn UnityGetAudioEffectDefinitions(defptr: *mut *const std::sync::atomic::AtomicPtr<UnityAudioEffectDefinition>) -> c_int
 {
-    lazy_static!(
-        static ref PARAMS: [UnityAudioParameterDefinition; 1] = [
-            Parameter::new("Division Rate", 1.0 .. 128.0).description("Division Rate").into()
-        ];
-        static ref ADEF: UnityAudioEffectDefinition = {
-            let mut uad = UnityAudioEffectDefinition
-            {
-                create: Some(create_decimating_processor), release: Some(release_decimating_processor),
-                process: Some(process_decimating_processor), setfloatparameter: Some(set_decimating_processor_float_parameter),
-                getfloatparameter: Some(get_decimating_processor_float_parameter),
-                numparameters: PARAMS.len() as _, paramdefs: PARAMS.as_ptr(),
-                .. Default::default()
-            };
-            uad.name[..9].copy_from_slice(unsafe { std::mem::transmute("Decimator".as_bytes()) }); uad
-        };
-        static ref DEFPTRS: [std::sync::atomic::AtomicPtr<UnityAudioEffectDefinition>; 1] = [std::sync::atomic::AtomicPtr::new(&*ADEF as *const _ as *mut _)];
-    );
+    lazy_static!(static ref DEFPTRS: [std::sync::atomic::AtomicPtr<UnityAudioEffectDefinition>; 1] = [
+        std::sync::atomic::AtomicPtr::new(DecimatingProcessor::definition() as *const _ as *mut _)
+    ];);
     unsafe { *defptr = DEFPTRS.as_ptr(); } 1
 }
